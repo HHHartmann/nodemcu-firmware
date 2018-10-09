@@ -8,6 +8,8 @@
 
 CCFLAGS:= -I.. -I../../include -I../../libc -I../../uzlib
 LDFLAGS:= -L$(SDK_DIR)/lib -L$(SDK_DIR)/ld -lm -ldl -Wl,-Map=mapfile
+#CCFLAGS:= -I.. -I../../include -I../../../include -I ../../libc   -m32  -march=i386
+#LDFLAGS:= -L$(SDK_DIR)/lib -L$(SDK_DIR)/ld -lm -ldl -Wl,-Map=mapfile -m32  
 
 CCFLAGS += -Wall
 
