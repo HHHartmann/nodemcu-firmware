@@ -1,7 +1,4 @@
-#os:
-#    - windows
-#    - linux
-
+dist: xenial
 language: cpp
 
 matrix:
