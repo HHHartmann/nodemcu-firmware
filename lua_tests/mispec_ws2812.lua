@@ -2,6 +2,19 @@ require 'mispec'
 
 local buffer, buffer1, buffer2
 
+local function initBuffer(buffer, ...)
+  local i,v
+  for i,v in ipairs({...}) do
+    buffer:set(i, v, v*2, v*3, v*4)
+  end
+  return buffer
+end
+
+local function equalsBuffer(buffer1, buffer2)
+  return eq(buffer1:dump(), buffer2:dump())
+end
+
+
 describe('WS2812 buffers', function(it)
 
     it:should('initialize a buffer', function()
@@ -51,7 +64,7 @@ describe('WS2812 buffers', function(it)
         fail(function() buffer:replace(string.char(3,255,165,33,0,244,12,87,255), 4) end)
     end)
 
-    it:should('replace correctly failing #2921', function()
+    it:should('replace correctly issue #2921', function()
         local buffer = ws2812.newBuffer(5, 3)
         failwith("Does not fit into destination", function() buffer:replace(string.char(3,255,165,33,0,244,12,87,255), -7) end)
     end)
@@ -70,7 +83,7 @@ describe('WS2812 buffers', function(it)
         failwith("index out of range", function() buffer:set(0,1,2,3,4) end)
         failwith("index out of range", function() buffer:set(4,1,2,3,4) end)
         failwith("number expected, got no value", function() buffer:set(2,1,2,3) end)
---        failwith("index out of range", function() buffer:set(2,1,2,3,4,5) end)
+--        failwith("extra values given", function() buffer:set(2,1,2,3,4,5) end)
     end)
 
     it:should('fade correctly', function()
@@ -92,30 +105,162 @@ describe('WS2812 buffers', function(it)
 
     it:should('mix correctly issue #1736', function()
         buffer1 = ws2812.newBuffer(1, 3) 
-        buffer2 = ws2812.newBuffer(1, 3) 
+        buffer2 = ws2812.newBuffer(1, 3)
         buffer1:fill(10,22,54)
         buffer2:fill(10,27,55)
         buffer1:mix(256/8*7,buffer1,256/8,buffer2)
         ok(eq({buffer1:get(1)}, {10,23,54}))
     end)
 
-    it:should('mix correctly', function()
+    it:should('mix saturation correctly ', function()
         buffer1 = ws2812.newBuffer(1, 3) 
         buffer2 = ws2812.newBuffer(1, 3) 
+
         buffer1:fill(10,22,54)
         buffer2:fill(10,27,55)
         buffer1:mix(256/2,buffer1,-256,buffer2)
         ok(eq({buffer1:get(1)}, {0,0,0}))
+
+        buffer1:fill(10,22,54)
+        buffer2:fill(10,27,55)
+        buffer1:mix(25600,buffer1,256/8,buffer2)
+        ok(eq({buffer1:get(1)}, {255,255,255}))
+
+        buffer1:fill(10,22,54)
+        buffer2:fill(10,27,55)
+        buffer1:mix(-257,buffer1,255,buffer2)
+        print(buffer1:get(1))
+        ok(eq({buffer1:get(1)}, {0,5,1}))
+    end)
+
+    it:should('power', function()
+        buffer = ws2812.newBuffer(2, 4)
+        buffer:fill(10,22,54,234)
+        ok(eq(buffer:power(), 2*(10+22+54+234)))
+    end)
+
+    it:should('shift LOGICAL', function()
+
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(4, 4)
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,0,0,7,8)
+        buffer1:shift(2)
+        ok(equalsBuffer(buffer1, buffer2), "shift right")
+        
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,9,12,0,0)
+        buffer1:shift(-2)
+        ok(equalsBuffer(buffer1, buffer2), "shift left")
+        
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,7,0,8,12)
+        buffer1:shift(1, nil, 2,3)
+        ok(equalsBuffer(buffer1, buffer2), "shift middle right")
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,7,9,0,12)
+        buffer1:shift(-1, nil, 2,3)
+        ok(equalsBuffer(buffer1, buffer2), "shift middle left")
+
+        -- bounds checks, handle gracefully as string:sub does
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,8,9,12,0)
+        buffer1:shift(-1, ws2812.SHIFT_LOGICAL, 0,5)
+        ok(equalsBuffer(buffer1, buffer2), "shift left out of bound")
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,0,7,8,9)
+        buffer1:shift(1, ws2812.SHIFT_LOGICAL, 0,5)
+        ok(equalsBuffer(buffer1, buffer2), "shift right out of bound")
+
+    end)
+
+    it:should('shift LOGICAL issue #2946', function()
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(4, 4)
+        
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,0,0,0,0)
+        buffer1:shift(10)
+        ok(equalsBuffer(buffer1, buffer2), "shift all right")
+          
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,0,0,0,0)
+        -- will reboot, so commented for now
+        buffer1:shift(-6)
+        ok(equalsBuffer(buffer1, buffer2), "shift all left")
+    end)
+
+    it:should('shift CIRCULAR', function()
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(4, 4)
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,9,12,7,8)
+        buffer1:shift(2, ws2812.SHIFT_CIRCULAR)
+        ok(equalsBuffer(buffer1, buffer2), "shift right")
+        
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,9,12,7,8)
+        buffer1:shift(-2, ws2812.SHIFT_CIRCULAR)
+        ok(equalsBuffer(buffer1, buffer2), "shift left")
+        
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,7,9,8,12)
+        buffer1:shift(1, ws2812.SHIFT_CIRCULAR, 2,3)
+        ok(equalsBuffer(buffer1, buffer2), "shift middle right")
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,7,9,8,12)
+        buffer1:shift(-1, ws2812.SHIFT_CIRCULAR, 2,3)
+        ok(equalsBuffer(buffer1, buffer2), "shift middle left")
+
+        -- bounds checks, handle gracefully as string:sub does
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,8,9,12,7)
+        buffer1:shift(-1, ws2812.SHIFT_CIRCULAR, 0,5)
+        ok(equalsBuffer(buffer1, buffer2), "shift left out of bound")
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,12,7,8,9)
+        buffer1:shift(1, ws2812.SHIFT_CIRCULAR, 0,5)
+        ok(equalsBuffer(buffer1, buffer2), "shift right out of bound")
+
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,12,7,8,9)
+        buffer1:shift(1, ws2812.SHIFT_CIRCULAR, -12,12)
+        ok(equalsBuffer(buffer1, buffer2), "shift right way out of bound")
+
+    end)
+
+    it:should('sub', function()
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(4, 4)
+        initBuffer(buffer1,7,8,9,12)
+        buffer1 = buffer1:sub(4,3)
+        ok(eq(buffer1:size(), 0), "sub empty")
+
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(2, 4)
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,9,12)
+        buffer1 = buffer1:sub(3,4)
+        ok(equalsBuffer(buffer1, buffer2), "sub")
+
+        buffer1 = ws2812.newBuffer(4, 4)
+        buffer2 = ws2812.newBuffer(4, 4)
+        initBuffer(buffer1,7,8,9,12)
+        initBuffer(buffer2,7,8,9,12)
+        buffer1 = buffer1:sub(-12,33)
+        ok(equalsBuffer(buffer1, buffer2), "out of bounds")
     end)
 
 
 
 
 --[[
-ws2812.buffer:mix()	This is a general method that loads data into a buffer that is a linear combination of data from other buffers.
-ws2812.buffer:power()	Computes the total energy requirement for the buffer.
-ws2812.buffer:shift()	Shift the content of (a piece of) the buffer in positive or negative direction.
-ws2812.buffer:sub()	This implements the extraction function like string.
 ws2812.buffer:__concat()
 --]]
 
