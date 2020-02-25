@@ -540,7 +540,8 @@ stds.nodemcu_libs = {
         dsleep_aligned = empty,
         epoch2cal = empty,
         get = empty,
-        set = empty
+        set = empty,
+        set_rate = empty
       }
     },
     si7021 = {

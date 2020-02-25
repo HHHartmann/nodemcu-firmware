@@ -158,6 +158,12 @@ rtctime.set(1436430589, 0)
 #### See also
 [`sntp.sync()`](sntp.md#sntpsync)
 
+## rtctime.set_rate()
+Adjust the RTC rate, as per [`rtctime.set()`](#rtctimeset), but without also setting the time.
+
+#### Syntax
+`rtctime.set_rate(rate)`
+
 ## rtctime.adjust_delta()
 
 This takes a time interval in 'system clock microseconds' based on the timestamps returned by `tmr.now` and returns

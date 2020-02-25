@@ -144,6 +144,12 @@ static int rtctime_set (lua_State *L)
   return 0;
 }
 
+static int rtctime_set_rate (lua_State *L)
+{
+  rtc_time_set_rate(luaL_checkinteger(L, 1));
+  return 0;
+}
+
 // sec, usec = rtctime.get ()
 static int rtctime_get (lua_State *L)
 {
@@ -229,6 +235,7 @@ static int rtctime_epoch2cal (lua_State *L)
 // Module function map
 LROT_BEGIN(rtctime, NULL, 0)
   LROT_FUNCENTRY( set, rtctime_set )
+  LROT_FUNCENTRY( set_rate, rtctime_set_rate )
   LROT_FUNCENTRY( get, rtctime_get )
   LROT_FUNCENTRY( adjust_delta, rtctime_adjust_delta )
   LROT_FUNCENTRY( dsleep, rtctime_dsleep )
