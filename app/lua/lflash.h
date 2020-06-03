@@ -46,5 +46,6 @@ LUAI_FUNC void luaN_init (lua_State *L);
 LUAI_FUNC int  luaN_flashSetup (lua_State *L);
 LUAI_FUNC int  luaN_reload_reboot (lua_State *L);
 LUAI_FUNC int  luaN_index (lua_State *L);
+LUAI_FUNC int  luaN_index2 (lua_State *L);
 #endif
 

@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../tools/BuiltinLFS.h"
+const unsigned char* BuiltinLFS = BuiltinLFS_xxx;
+
 /*
  * Flash memory is a fixed memory addressable block that is serially allocated by the
  * luac build process and the out image can be downloaded into SPIFSS and loaded into
@@ -142,6 +145,7 @@ static void flashErase(uint32_t start, uint32_t end){
  * The first is the startup hook used in lstate.c and the last two are
  * implementations of the node.flash API calls.
  */
+static void validateAndSetLFS(FlashHeader *fh, stringtable *ROstrt, Proto **ROpvmain);
 
 /*
  * Hook in lstate.c:f_luaopen() to set up ROstrt and ROpvmain if needed
@@ -158,6 +162,17 @@ LUAI_FUNC void luaN_init (lua_State *L) {
   FlashHeader *fh = cast(FlashHeader *, flashAddr);
   curOffset       = 0;
 
+  NODE_ERR("LFS region flashAddr: 0x%08x flashAddrPhys: 0x%08x\n", cast(FlashAddr, flashAddr), cast(FlashAddr, flashAddrPhys));
+
+  validateAndSetLFS(fh, &G(L)->ROstrt, &G(L)->ROpvmain);
+
+  fh = cast(FlashHeader *, BuiltinLFS);
+  NODE_ERR("FWLFS region BuiltinLFS: 0x%08x phys2mapped(BuiltinLFS): 0x%08x\n", cast(FlashAddr, BuiltinLFS), platform_flash_phys2mapped(cast(FlashAddr, BuiltinLFS)));
+  validateAndSetLFS(fh, &G(L)->FWROstrt, &G(L)->FWROpvmain);
+}
+
+static void validateAndSetLFS(FlashHeader *fh, stringtable *ROstrt, Proto **ROpvmain)
+{
   /*
    * For the LFS to be valid, its signature has to be correct for this build
    * variant, the ROhash and main proto fields must be defined and the main proto
@@ -183,10 +198,10 @@ LUAI_FUNC void luaN_init (lua_State *L) {
     return;
   }
 
-  G(L)->ROstrt.hash = cast(GCObject **, fh->pROhash);
-  G(L)->ROstrt.nuse = fh->nROuse ;
-  G(L)->ROstrt.size = fh->nROsize;
-  G(L)->ROpvmain    = cast(Proto *,fh->mainProto);
+  ROstrt->hash = cast(GCObject **, fh->pROhash);
+  ROstrt->nuse = fh->nROuse ;
+  ROstrt->size = fh->nROsize;
+  *ROpvmain    = cast(Proto *,fh->mainProto);
 }
 
 //extern void software_reset(void);
@@ -309,6 +324,54 @@ LUAI_FUNC int luaN_index (lua_State *L) {
   lua_insert(L, 4);
   return 5;
 }
+
+// load static LFS
+LUAI_FUNC int luaN_index2(lua_State *L) {
+  int n = lua_gettop(L);
+
+  /* Return nil + the LFS base address if the LFS size > 0 and it isn't loaded */
+  if (!(G(L)->FWROpvmain)) {
+    lua_settop(L, 0);
+    lua_pushnil(L);
+/*    if (G(L)->LFSsize) {
+      lua_pushinteger(L, (lua_Integer)flashAddr);
+      lua_pushinteger(L, flashAddrPhys);
+      lua_pushinteger(L, G(L)->LFSsize);
+      return 4;
+    }
+    else */{
+      return 1;
+    }
+  }
+
+  /* Push the LClosure of the LFS index function */
+  Closure *cl = luaF_newLclosure(L, 0, hvalue(gt(L)));
+  cl->l.p = G(L)->FWROpvmain;
+  lua_settop(L, n + 1);
+  setclvalue(L, L->top - 1, cl);
+
+  /* Move it infront of the arguments and call the index function */
+  lua_insert(L, 1);
+  lua_call(L, n, LUA_MULTRET);
+
+  /* Return it if the response if a single value (the function) */
+  if (lua_gettop(L) == 1)
+    return 1;
+
+  lua_assert(lua_gettop(L) == 2);
+
+  /* Otherwise add the base address of the LFS, and its size bewteen the */
+  /* Unix time and the module list, then return all 4 params. */
+  lua_pushinteger(L, (lua_Integer)flashAddr);
+  lua_insert(L, 2);
+  lua_pushinteger(L, flashAddrPhys);
+  lua_insert(L, 3);
+//  lua_pushinteger(L, cast(FlashHeader *, flashAddr)->flash_size);
+//  lua_insert(L, 4);
+//  return 5;
+  return 4;
+}
+
 /* =====================================================================================
  * The following routines use my uzlib which was based on pfalcon's inflate and
  * deflate routines.  The standard NodeMCU make also makes two host tools uz_zip

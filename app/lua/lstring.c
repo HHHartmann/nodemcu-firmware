@@ -102,8 +102,19 @@ LUAI_FUNC TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
    */
   if (G(L)->ROstrt.hash) {
     for (o = G(L)->ROstrt.hash[lmod(h, G(L)->ROstrt.size)];
-         o != NULL;
-         o = o->gch.next) {
+      o != NULL;
+      o = o->gch.next) {
+      TString *ts = rawgco2ts(o);
+      if (ts->tsv.len == l && (memcmp(str, getstr(ts), l) == 0)) {
+        return ts;
+      }
+    }
+  }
+
+  if (G(L)->FWROstrt.hash) {
+    for (o = G(L)->FWROstrt.hash[lmod(h, G(L)->FWROstrt.size)];
+      o != NULL;
+      o = o->gch.next) {
       TString *ts = rawgco2ts(o);
       if (ts->tsv.len == l && (memcmp(str, getstr(ts), l) == 0)) {
         return ts;
