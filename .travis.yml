@@ -6,10 +6,10 @@ language: cpp
 
 matrix:
     include:
-        - os: linux
-          env: 
-          - OS="$TRAVIS_OS_NAME"
-          - LUACC=./luac.cross
+#        - os: linux
+#          env: 
+#          - OS="$TRAVIS_OS_NAME"
+#          - LUACC=./luac.cross
         - os: windows
           env: 
           - MSBUILD_PATH="c:\Program Files (x86)\Microsoft Visual Studio\2017\BuildTools\MSBuild\15.0\Bin"
@@ -36,3 +36,12 @@ script:
 - find lua_modules lua_examples -iname "*.lua" -print0 | xargs -0 $LUACC -p
 - if [ "$OS" = "linux" ]; then bash "$TRAVIS_BUILD_DIR"/tools/travis/run-luacheck-linux.sh; fi
 - if [ "$OS" = "windows" ]; then bash "$TRAVIS_BUILD_DIR"/tools/travis/run-luacheck-windows.sh; fi
+deploy:
+  provider: pages
+  local_dir: msvc/luac-cross/x64/Debug/
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN  # Set in the settings page of your repository, as a secure variable
+  keep_history: true
+  on:
+    branch: travistest
+    
