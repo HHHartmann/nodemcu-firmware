@@ -926,7 +926,9 @@ stds.nodemcu_libs = {
     pack = empty,
     unpack  = empty,
     size = empty,
-    package = {fields = {seeall = read_write}}
+    package = {fields = {seeall = read_write}},
+    _ENV = empty,
+    LFS = {read_only = true, other_fields = true}
   }
 }
 

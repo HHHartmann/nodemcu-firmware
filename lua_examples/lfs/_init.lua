@@ -8,8 +8,8 @@
   module related initialisaion in this. This example uses standard Lua features to
   simplify the LFS API.
 
-  For Lua 5.1, the first section adds a 'LFS' table to _G and uses the __index 
-  metamethod to resolve functions in the LFS, so you can execute the main 
+  For Lua 5.1, the first section adds a 'LFS' table to _G and uses the __index
+  metamethod to resolve functions in the LFS, so you can execute the main
   function of module 'fred' by executing LFS.fred(params), etc.
   It also implements some standard readonly properties:
 
@@ -24,13 +24,13 @@
                  print(table.concat(LFS._list,'\n'))
                gives you a single column listing of all modules in the LFS.
 
-   For Lua 5.3 LFS table is already populated by the firmware itself so this part of the
-   code is skipped.
+   For Lua 5.3 LFS table is populated by the LFS implementation in C so this part
+   of the code is skipped.
 ---------------------------------------------------------------------------------]]
 
+local index = node.flashindex
 local G=_ENV or getfenv()
-if _VERSION == 'Lua 5.1' then 
-  local index = node.flashindex
+if _VERSION == 'Lua 5.1' then
   local lfs_t = {
     __index = function(_, name)
         local fn_ut, ba, ma, size, modules = index(name)
@@ -54,12 +54,7 @@ if _VERSION == 'Lua 5.1' then
       end,
   }
 
-  G.LFS = setmetatable(lfs_t,lfs_t) 
-  --[[-------------------------------------------------------------------------------
-    You can add any other initialisation here, for example a couple of the globals
-    are never used, so setting them to nil saves a couple of global entries
-  ---------------------------------------------------------------------------------]]
-
+  G.LFS = setmetatable(lfs_t,lfs_t)
   G.module       = nil    -- disable Lua 5.0 style modules to save RAM
   package.seeall = nil
 end
