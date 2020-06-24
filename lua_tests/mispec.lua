@@ -2,6 +2,13 @@ local moduleName = ... or 'mispec'
 local M = {}
 _G[moduleName] = M
 
+local shimhandler
+do
+  local ok
+  ok, shimhandler = pcall(require,"shim_mispec")
+  if not ok then shimhandler = nil end
+end
+
 -- Helpers:
 function ok(expression, desc)
     if expression == nil then expression = false end
@@ -142,6 +149,7 @@ M.run = function()
                 M.failed = M.failed + 1
             end
             if M.post then M.post() end
+            if shimhandler then shimhandler(status, M.total, desc, err) end
             M.runNextPending()
         end)
     end
@@ -150,6 +158,7 @@ M.run = function()
     M.itshoulds(it)
 
     print('' .. M.name .. ', it should:')
+    if shimhandler then shimhandler("begin", #M.pending) end
     M.runNextPending()
 
     M.itshoulds = nil
