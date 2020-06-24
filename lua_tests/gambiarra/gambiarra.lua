@@ -101,6 +101,12 @@ end
 local pendingtests = {}
 local env = _G
 local gambiarrahandler = TERMINAL_HANDLER
+local shimhandler
+do
+  local ok
+  ok, shimhandler = pcall(require,"shim_gambiarra")
+  if not ok then shimhandler = nil end
+end
 
 local function runpending()
   if pendingtests[1] ~= nil then pendingtests[1](runpending) end
@@ -133,7 +139,10 @@ return function(name, f, async)
       if next then next() end
     end
 
-    local handler = gambiarrahandler
+    local handler = function(...)
+      gambiarrahandler(...)
+      if shimhandler then shimhandler(...) end
+    end
     local function wrap(f, ...)
       f(handler, name, ...)
     end
